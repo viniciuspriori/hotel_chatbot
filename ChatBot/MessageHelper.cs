@@ -17,14 +17,11 @@ namespace ChatBot
 		//1
 		public static string UserOptionsMessage() => "A diária é cobrada por noite dormida." + "\n" + "*1*. Informações das diárias de segunda-feira a quinta-feira" + "\n" + "*2*. Informações das diárias de sexta-feira a domingo";
 
-
 		//2.1
 		public static string NormalDailyMessage() => "Diária dos períodos entre segunda-feira e quinta-feira: *R$ 290,00*";
 		//2.2
 		public static string WeekendDailyMessage() => "Diária de fim de semana (sexta-feira a domingo): *R$330,00*" + "\n" + "*ATENÇÃO*: No fim de semana vendemos no mínimo *duas* diárias, de sexta a domingo ou sábado a segunda.";
 
-
-		public static string ShiftEnter() => $"{Keys.Alt + Keys.Enter}";
 	}
 
 	//"Diaria é cobrada por noite dormida,

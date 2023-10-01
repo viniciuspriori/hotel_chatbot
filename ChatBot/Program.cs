@@ -21,7 +21,7 @@ void Run()
 	var arguments = new string[] { "--no-sandbox", "--disable-dev-shm-usage", $"user-data-dir={cookiesPath}", "--start-maximized" };
 	options.AddArguments(arguments);
 	options.AddExcludedArgument("enable-automation");
-	
+
 	driver = new ChromeDriver(@"C:\chromedriver", options);
 	driver.Navigate().GoToUrl("https://web.whatsapp.com");
 
@@ -44,12 +44,12 @@ void Run()
 
 		try
 		{
-			if(driver?.Title is null)
+			if (driver?.Title is null)
 			{
-				throw new Exception();
+				throw new NoSuchWindowException();
 			}
 		}
-		catch(NoSuchWindowException)
+		catch (NoSuchWindowException)
 		{
 			driver?.Quit();
 			driver.Dispose();
@@ -99,7 +99,7 @@ IWebElement GetElements(IWebDriver driver)
 	}
 	catch
 	{
-		elementFound= null;
+		elementFound = null;
 	}
 
 	return elementFound;
@@ -126,7 +126,8 @@ bool GetNewMessage()
 			return false;
 		}
 	}
-	catch {
+	catch
+	{
 		return false;
 	}
 
@@ -143,8 +144,7 @@ void Process()
 	var body = "/html/body/div[1]/div/div/div[5]/div/header/div[2]/div/div/span";
 	string? headerName = FindElementByXPath(body).Text;
 
-
-	if(users.ContainsKey(headerName))
+	if (users.ContainsKey(headerName))
 	{
 		ProcessMessage(headerName);
 	}
@@ -156,7 +156,6 @@ void Process()
 
 	Thread.Sleep(2000);
 }
-
 
 void ProcessMessage(string userName)
 {
@@ -175,11 +174,12 @@ void ProcessMessage(string userName)
 		if (res == false)
 		{
 			return;
-		} else
+		}
+		else
 		{
 			var x = 2;
 		}
-			
+
 
 		if (users.GetValueOrDefault(userName) == (int)UserState.Entered)
 		{
@@ -271,7 +271,6 @@ void CheckLoggedIn()
 
 IWebElement GetTextBoxToSend()
 {
-	//return driver.FindElement(By.XPath(Elements.TEXT_BOX_SEND));
 	return wait.Until(dr => dr.FindElement(By.XPath(Elements.TEXT_BOX_SEND)));
 }
 
