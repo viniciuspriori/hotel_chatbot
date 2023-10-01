@@ -2,6 +2,7 @@
 using ChatBot;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.DevTools.V85.IndexedDB;
 using OpenQA.Selenium.Support.UI;
 using System.Collections.ObjectModel;
 using static ChatBot.Constants;
@@ -43,49 +44,77 @@ void Run()
 
 		try
 		{
-			var url = driver.Url;
-	}
+			if(driver?.Title is null)
+			{
+				throw new Exception();
+			}
+		}
 		catch(NoSuchWindowException)
 		{
 			driver?.Quit();
 			driver.Dispose();
 			Environment.Exit(0);
-}
+		}
 	}
 }
 
-void SendMessage(string text, bool withBackSpace = true)
+void SendMessage(string text)
 {
-	string append = withBackSpace ? Keys.Backspace + Keys.Enter : Keys.Enter;
-
 	IWebElement textBox = GetTextBoxToSend();
-	//IJavaScriptExecutor jse = driver;
-	//var x = jse.ExecuteScript($"arguments[0].innerHTML = '{text}'", textBox);
-	textBox.SendKeys(text + append);
+
+
+	foreach (var item in text.Split("\n"))
+	{
+		textBox.SendKeys(item + Keys.Shift + Keys.Enter + Keys.Enter);
+	}
+
+	textBox.SendKeys(Keys.Enter);
 }
 
-string GetLastInsideChatMessage()
-{
-	var body1 = ContainsInXPath(Elements.Parents.DIV, Elements.Parents.CLASS, Elements.USER_MESSAGES_LIST);
-	string insideChat = $"{body1}//div[last()][contains(@{Elements.Parents.CLASS}, 'message-in')]";
+string GetOutSideChat() => ContainsInXPath(Elements.Parents.SPAN, Elements.Parents.ARIA_LABEL, "Não lidas");
 
-	return insideChat;
+IWebElement GetElements(IWebDriver driver)
+{
+	string outSideChat = GetOutSideChat();
+
+	IWebElement elementFound = null;
+	try
+	{
+		var e = driver.FindElements(By.XPath("//div[contains(@class,'message-in focusable-list-item')]/following::span[contains(@class,'selectable-text')]/span"));
+
+		if (e.Count > 0)
+		{
+			return e.Last();
+		}
+	}
+	catch
+	{
+		elementFound = null;
+	}
+
+	try
+	{
+		elementFound = driver.FindElement(By.XPath(outSideChat));
+		return elementFound;
+	}
+	catch
+	{
+		elementFound= null;
+	}
+
+	return elementFound;
 }
 
 bool GetNewMessage()
 {
-	string outSideChat = ContainsInXPath(Elements.Parents.SPAN, Elements.Parents.ARIA_LABEL, "Não lidas");
-	string notRead = $"{GetLastInsideChatMessage()} | {outSideChat}";
-	string msg = $"{notRead}//ancestor::div[@{Elements.Parents.CLASS}='{Elements.USER_PANEL}']";
-
+	string userPanel = $"{GetOutSideChat()}//ancestor::div[@{Elements.Parents.CLASS}='{Elements.USER_PANEL}']";
 	try
 	{
-		wait.Until(dr => dr.FindElement(By.XPath(notRead)));
-		var msgReceived = By.XPath(msg);
+		wait.Until(GetElements);
 
 		try
 		{
-			var element = driver?.FindElement(msgReceived);
+			var element = driver?.FindElement(By.XPath(userPanel));
 			if (element != null)
 			{
 				element.Click();
@@ -100,7 +129,6 @@ bool GetNewMessage()
 	catch {
 		return false;
 	}
-	catch { }
 
 	return false;
 }
@@ -112,8 +140,9 @@ IWebElement FindElementByXPath(string elementName)
 }
 void Process()
 {
-	var body = ContainsInXPath(Elements.Parents.SPAN, Elements.Parents.CLASS, Elements.USER_NAME_OR_NUMBER);
+	var body = "/html/body/div[1]/div/div/div[5]/div/header/div[2]/div/div/span";
 	string? headerName = FindElementByXPath(body).Text;
+
 
 	if(users.ContainsKey(headerName))
 	{
@@ -133,8 +162,12 @@ void ProcessMessage(string userName)
 {
 	try
 	{
-		string element = GetLastInsideChatMessage() + $"//{Elements.Parents.SPAN}[@{Elements.Parents.CLASS}='{Elements.INNER_MESSAGE_CLASS}']";
-		var text = FindElementByXPath(element).Text;
+		var messagesIn = ContainsInXPath(Elements.Parents.DIV, Elements.Parents.CLASS, "message-in");
+
+		var text = wait.Until(driver => driver.FindElements(By.XPath(messagesIn)).Last().Text).Substring(0, 1);
+		//string contenido = driver.FindElement(By.XPath($"//div[contains(@aria-label, 'Lista de mensajes')]"
+		//+ $"//div[last()][contains(@class, 'message-in')]//span[contains(@class, 'i0jNr selectable-text copyable-text')]")).Text;
+		//var text = FindElementByXPath(element).Text;
 
 		int num = -1;
 
@@ -146,7 +179,7 @@ void ProcessMessage(string userName)
 		{
 			var x = 2;
 		}
-
+			
 
 		if (users.GetValueOrDefault(userName) == (int)UserState.Entered)
 		{
@@ -176,6 +209,12 @@ void ProcessMessage(string userName)
 					SendWeekendDailyMessage();
 					break;
 
+				default:
+					ErrorMessage();
+					SendMessage(MessageHelper.WelcomeMessage());
+					users[userName] = (int)UserState.Entered;
+					break;
+
 			}
 		}
 
@@ -203,7 +242,7 @@ void SendOptionsMessage()
 
 void ErrorMessage()
 {
-	SendMessage(MessageHelper.ErrorMessage(), false);
+	SendMessage(MessageHelper.ErrorMessage());
 }
 
 void CheckLoggedIn()
@@ -214,16 +253,16 @@ void CheckLoggedIn()
 
 	try
 	{
-	var checked1 = driver?.FindElements(By.XPath(body)).SingleOrDefault();
-	if (checked1 == null)
-	{
-		loginInfo = false;
+		var checked1 = driver?.FindElements(By.XPath(body)).SingleOrDefault();
+		if (checked1 == null)
+		{
+			loginInfo = false;
+		}
+		else
+		{
+			loginInfo = true;
+		}
 	}
-	else
-	{
-		loginInfo = true;
-	}
-}
 	catch
 	{
 
