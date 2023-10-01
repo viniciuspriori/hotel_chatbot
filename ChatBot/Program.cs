@@ -10,7 +10,8 @@ bool loginInfo = false;
 ChromeDriver driver;
 Dictionary<string, int> users = new Dictionary<string, int>();
 WebDriverWait wait;
-string cookiesPath = @"C:\Users\Vinicius\AppData\Local\Google\Chrome\botSession\";
+string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+string cookiesPath = localAppData + "\\Google\\Chrome\\botSession\\";
 Run();
 
 void Run()
@@ -39,6 +40,17 @@ void Run()
 		{
 			Process();
 		}
+
+		try
+		{
+			var url = driver.Url;
+	}
+		catch(NoSuchWindowException)
+		{
+			driver?.Quit();
+			driver.Dispose();
+			Environment.Exit(0);
+}
 	}
 }
 
@@ -85,6 +97,9 @@ bool GetNewMessage()
 			return false;
 		}
 	}
+	catch {
+		return false;
+	}
 	catch { }
 
 	return false;
@@ -123,7 +138,14 @@ void ProcessMessage(string userName)
 
 		int num = -1;
 
-		int.TryParse(text, out num);
+		var res = int.TryParse(text, out num);
+		if (res == false)
+		{
+			return;
+		} else
+		{
+			var x = 2;
+		}
 
 
 		if (users.GetValueOrDefault(userName) == (int)UserState.Entered)
@@ -160,7 +182,7 @@ void ProcessMessage(string userName)
 	}
 	catch
 	{
-		ErrorMessage();
+
 	}
 }
 
@@ -190,6 +212,8 @@ void CheckLoggedIn()
 
 	var body = ContainsInXPath(Elements.Parents.DIV, Elements.Parents.ARIA_LABEL, "foto do perfil");
 
+	try
+	{
 	var checked1 = driver?.FindElements(By.XPath(body)).SingleOrDefault();
 	if (checked1 == null)
 	{
@@ -198,6 +222,11 @@ void CheckLoggedIn()
 	else
 	{
 		loginInfo = true;
+	}
+}
+	catch
+	{
+
 	}
 }
 

@@ -14,7 +14,7 @@ namespace ChatBot
 		public static string WelcomeMessage() => "Bem-vindo! Digite 1 para informações sobre as diárias do Hotel.";
 
 		//1
-		public static string UserOptionsMessage() => "A diária é cobrada por noite dormida." + "<br>" + "Digite 1 para informações das diárias de segunda-feira a quinta-feira" + "<br>" + "Digite 2 para informações das diárias de sexta-feira a domingo";
+		public static string UserOptionsMessage() => "A diária é cobrada por noite dormida." + "\r\n" + "Digite 1 para informações das diárias de segunda-feira a quinta-feira" + "\r\n" + "Digite 2 para informações das diárias de sexta-feira a domingo";
 
 
 		//2.1
