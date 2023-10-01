@@ -3,21 +3,24 @@ using ChatBot;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
+using System.Collections.ObjectModel;
 using static ChatBot.Constants;
 
 bool loginInfo = false;
-var driver = new ChromeDriver(@"C:\chromedriver");
-IJavaScriptExecutor jse = (IJavaScriptExecutor)driver;
+ChromeDriver driver;
 Dictionary<string, int> users = new Dictionary<string, int>();
 WebDriverWait wait;
+string cookiesPath = @"C:\Users\Vinicius\AppData\Local\Google\Chrome\botSession\";
 Run();
 
 void Run()
 {
 	var options = new ChromeOptions();
-	options.AddArguments("--start-maximized");
+	var arguments = new string[] { "--no-sandbox", "--disable-dev-shm-usage", $"user-data-dir={cookiesPath}", "--start-maximized" };
+	options.AddArguments(arguments);
 	options.AddExcludedArgument("enable-automation");
-	options.AddArgument("@user-data-dir=C:\\Users\\Username\\AppData\\Local\\Google\\Chrome\\User Data");
+	
+	driver = new ChromeDriver(@"C:\chromedriver", options);
 	driver.Navigate().GoToUrl("https://web.whatsapp.com");
 
 	while (loginInfo == false)
@@ -25,10 +28,10 @@ void Run()
 		CheckLoggedIn();
 	}
 
-	wait = new WebDriverWait(driver, TimeSpan.Zero);
+	wait = new WebDriverWait(driver, TimeSpan.FromMinutes(Timeout.Infinite));
 	wait.Until(dr => dr.FindElement(By.Id("side")));
 
-	//sleep
+	Thread.Sleep(5000);
 
 	while (true)
 	{
@@ -41,11 +44,12 @@ void Run()
 
 void SendMessage(string text, bool withBackSpace = true)
 {
-	var append = withBackSpace ? Keys.Backspace + Keys.Enter : Keys.Enter;
+	string append = withBackSpace ? Keys.Backspace + Keys.Enter : Keys.Enter;
 
 	IWebElement textBox = GetTextBoxToSend();
-	jse.ExecuteScript($"arguments[0].innerHTML = '{text}'", textBox);
-	textBox.SendKeys("." + append);
+	//IJavaScriptExecutor jse = driver;
+	//var x = jse.ExecuteScript($"arguments[0].innerHTML = '{text}'", textBox);
+	textBox.SendKeys(text + append);
 }
 
 string GetLastInsideChatMessage()
@@ -59,26 +63,29 @@ string GetLastInsideChatMessage()
 bool GetNewMessage()
 {
 	string outSideChat = ContainsInXPath(Elements.Parents.SPAN, Elements.Parents.ARIA_LABEL, "Não lidas");
-
-	string notRead = $"{GetLastInsideChatMessage} | {outSideChat}";
+	string notRead = $"{GetLastInsideChatMessage()} | {outSideChat}";
 	string msg = $"{notRead}//ancestor::div[@{Elements.Parents.CLASS}='{Elements.USER_PANEL}']";
-
-	wait.Until(dr => dr.FindElement(By.XPath(notRead)));
-	var msgReceived = By.XPath(msg);
 
 	try
 	{
-		var element = driver?.FindElement(msgReceived);
-		if (element != null)
+		wait.Until(dr => dr.FindElement(By.XPath(notRead)));
+		var msgReceived = By.XPath(msg);
+
+		try
 		{
-			element.Click();
-			return true;
+			var element = driver?.FindElement(msgReceived);
+			if (element != null)
+			{
+				element.Click();
+				return true;
+			}
 		}
-	} 
-	catch(NoSuchElementException) 
-	{
-		return false;
+		catch (NoSuchElementException)
+		{
+			return false;
+		}
 	}
+	catch { }
 
 	return false;
 }
@@ -90,7 +97,7 @@ IWebElement FindElementByXPath(string elementName)
 }
 void Process()
 {
-	var body = ContainsInXPath(Elements.Parents.SPAN, Elements.Parents.ARIA_LABEL, Elements.USER_NAME_OR_NUMBER);
+	var body = ContainsInXPath(Elements.Parents.SPAN, Elements.Parents.CLASS, Elements.USER_NAME_OR_NUMBER);
 	string? headerName = FindElementByXPath(body).Text;
 
 	if(users.ContainsKey(headerName))
@@ -107,7 +114,7 @@ void Process()
 }
 
 
-void ProcessMessage(string headerName)
+void ProcessMessage(string userName)
 {
 	try
 	{
@@ -119,36 +126,36 @@ void ProcessMessage(string headerName)
 		int.TryParse(text, out num);
 
 
-		if (users.GetValueOrDefault(headerName) == (int)UserState.Entered)
+		if (users.GetValueOrDefault(userName) == (int)UserState.Entered)
 		{
-			switch (num)
+			switch ((SendOptions)num)
 			{
-				//case 1:
-				//	jse.ExecuteScript($"arguments[0].innerHTML = '{mensaje_1()}'", textbox);
-				//	lst_user[name_user] = 1;
-				//	break;
-				//case 2:
-				//	jse.ExecuteScript($"arguments[0].innerHTML = '{mensaje_2()}'", textbox);
-				//	lst_user[name_user] = 2;
-				//	break;
-				//case 3:
-				//	jse.ExecuteScript($"arguments[0].innerHTML = '{mensaje_3()}'", textbox);
-				//	lst_user[name_user] = 3;
-				//	break;
-				//case 4:
-				//	jse.ExecuteScript($"arguments[0].innerHTML = '{mensaje_4()}'", textbox);
-				//	lst_user[name_user] = 4;
-				//	break;
-				//case 0:
-				//	jse.ExecuteScript($"arguments[0].innerHTML = '{mensaje_0()}'", textbox);
-				//	lst_user.Remove(name_user);
-				//	break;
-				//default:
-				//	jse.ExecuteScript($"arguments[0].innerHTML = '{mensaje_error()}'", textbox);
-				//	break;
+				case SendOptions.MoreInfo:
+					SendOptionsMessage();
+					users[userName] = (int)UserState.ChooseDailyValues;
+					break;
+
+				default:
+					ErrorMessage();
+					users[userName] = (int)UserState.Entered;
+					break;
 			}
 		}
+		else if (users.GetValueOrDefault(userName) == (int)(UserState.ChooseDailyValues))
+		{
 
+			switch ((DailyOptions)num)
+			{
+				case DailyOptions.Normal:
+					SendNormalDailyMessage();
+					break;
+
+				case DailyOptions.Weekend:
+					SendWeekendDailyMessage();
+					break;
+
+			}
+		}
 
 	}
 	catch
@@ -157,9 +164,24 @@ void ProcessMessage(string headerName)
 	}
 }
 
+void SendNormalDailyMessage()
+{
+	SendMessage(MessageHelper.NormalDailyMessage());
+}
+
+void SendWeekendDailyMessage()
+{
+	SendMessage(MessageHelper.WeekendDailyMessage());
+}
+
+void SendOptionsMessage()
+{
+	SendMessage(MessageHelper.UserOptionsMessage());
+}
+
 void ErrorMessage()
 {
-	SendMessage(MessageHelper.ErrorMessage());
+	SendMessage(MessageHelper.ErrorMessage(), false);
 }
 
 void CheckLoggedIn()
@@ -181,6 +203,7 @@ void CheckLoggedIn()
 
 IWebElement GetTextBoxToSend()
 {
+	//return driver.FindElement(By.XPath(Elements.TEXT_BOX_SEND));
 	return wait.Until(dr => dr.FindElement(By.XPath(Elements.TEXT_BOX_SEND)));
 }
 
@@ -193,3 +216,4 @@ void RegisterNewUser(Dictionary<string, int> users, string? headerName)
 {
 	users.Add(headerName, (int)UserState.Entered);
 }
+
